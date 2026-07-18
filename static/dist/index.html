@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chess PGN Viewer</title>
+    <!-- Use standard Inter font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- chessboard.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Home View -->
+        <div id="homeView" class="view-container">
+            <header class="app-header">
+                <h1>Chess Game Library</h1>
+                <div class="header-right">
+                    <div class="sort-container">
+                        <button id="sortBtn" class="secondary-btn">Sort</button>
+                        <div id="sortDropdown" class="sort-dropdown" style="display: none;">
+                            <div class="sort-option" data-sort="alpha">Alphabetical Order</div>
+                            <div class="sort-option" data-sort="time">Time Added</div>
+                            <div class="sort-option" data-sort="winner">Winner</div>
+                        </div>
+                    </div>
+                    <div class="upload-container">
+                        <a id="btnProfileNav" href="/profile" data-route="/profile" class="secondary-btn btn-go-profile" style="margin-right: 10px;">Profile</a>
+                        <a id="btnPlayComputer" href="/play-computer" data-route="/play-computer" class="secondary-btn" style="margin-right: 10px;">Play
+                            Computer</a>
+                        <a id="btnChessCoach" href="/openings" data-route="/openings" class="secondary-btn" style="margin-right: 10px;">Chess Coach</a>
+                        <a id="btnTrainingCoach" href="/training" data-route="/training" class="secondary-btn" style="margin-right: 10px;">Training Coach</a>
+                        <a id="btnCreateGame" href="/create-game" data-route="/create-game" class="primary-btn" style="margin-right: 10px;">Create Game</a>
+                        <input type="file" id="pgnInput" accept=".pgn" class="file-input">
+                        <label for="pgnInput" class="primary-btn">Upload New Game</label>
+                    </div>
+                </div>
+            </header>
+
+            <div class="library-toolbar">
+                <small id="currentSortLabel">Sorted by: Time Added</small>
+            </div>
+
+            <div id="gameLibrary" class="game-library">
+                <!-- Game cards will be populated here -->
+                <div class="empty-state">No saved games yet. Upload a PGN to get started.</div>
+            </div>
+        </div>
+
+        <!-- Winner Group View -->
+        <div id="winnerGroupView" class="view-container" style="display: none;">
+            <header class="app-header">
+                <div class="header-left">
+                    <a id="btnBackFromWinnerGroup" href="/" data-route="/" class="nav-btn" style="width: auto; margin-right: 20px;">← Back to
+                        Games</a>
+                    <h1 id="winnerGroupTitle">Games</h1>
+                </div>
+                <div class="header-right">
+                    <a href="/profile" data-route="/profile" class="secondary-btn btn-go-profile">Profile</a>
+                </div>
+            </header>
+
+            <div id="winnerGroupLibrary" class="game-library">
+                <div class="empty-state">No games to show.</div>
+            </div>
+        </div>
+
+        <!-- Analysis View -->
+        <div id="analysisView" class="view-container" style="display: none;">
+            <header class="app-header">
+                <div class="header-left">
+                    <a id="btnBack" href="/" data-route="/" class="nav-btn" style="width: auto; margin-right: 20px;">← Back to
+                        Games</a>
+                    <h1 id="analysisTitle">Chess Analysis</h1>
+                </div>
+                <div class="header-right">
+                    <a href="/profile" data-route="/profile" class="secondary-btn btn-go-profile">Profile</a>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <div class="left-panel">
+                    <div class="board-container">
+                        <!-- The chessboard -->
+                        <div id="board" style="width: 100%"></div>
+
+                        <div class="board-navigation">
+                            <button id="btnStart" class="nav-btn">Start</button>
+                            <button id="btnPrev" class="nav-btn">Previous</button>
+                            <button id="btnNext" class="nav-btn">Next</button>
+                            <button id="btnEnd" class="nav-btn">End</button>
+                        </div>
+                    </div>
+
+                    <div class="pgn-raw-panel">
+                        <div class="panel-header-split">
+                            <h3>Raw PGN</h3>
+                            <h3>AI Text Format</h3>
+                        </div>
+                        <div class="textarea-split">
+                            <textarea id="rawPgnText" readonly></textarea>
+                            <textarea id="aiTextFormat" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="right-panel">
+                    <!-- Move List -->
+                    <div class="move-list-container">
+                        <div class="move-list-header">
+                            <h3>Move List</h3>
+                        </div>
+                        <div id="moveList" class="move-list">
+                            <!-- Moves will be populated here -->
+                            <div class="empty-state">No PGN loaded.</div>
+                        </div>
+                    </div>
+
+                    <!-- Chatbox -->
+                    <div class="chat-container">
+                        <div class="chat-header">
+                            <h3>AI Chat Assistant</h3>
+                        </div>
+
+                        <div id="chatMessages" class="chat-messages">
+                            <div class="message assistant">
+                                Hello! I am your AI Chess Assistant. Upload a PGN to get started.
+                            </div>
+                        </div>
+
+                        <div class="chat-input-container">
+                            <textarea id="chatInput" placeholder="Ask a question... (Shift+Enter for new line)"
+                                rows="4"></textarea>
+                            <button id="sendBtn" class="primary-btn">Send</button>
+                        </div>
+                    </div>
+                    <div class="chat-disclaimer">
+                        <small>This uses PGN context and Phi-3 Mini, not a chess engine. Whole-game feedback is general
+                            and may miss tactics. For accurate move quality, add a chess engine later.</small>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Create Game View -->
+        <div id="createGameView" class="view-container" style="display: none;">
+            <header class="app-header">
+                <div class="header-left">
+                    <a id="btnBackFromCreate" href="/" data-route="/" class="nav-btn" style="width: auto; margin-right: 20px;">← Back to
+                        Games</a>
+                    <h1>Create New Game</h1>
+                </div>
+                <div class="header-right">
+                    <a href="/profile" data-route="/profile" class="secondary-btn btn-go-profile" style="margin-right: 10px;">Profile</a>
+                    <button id="btnUndoCreateMove" class="secondary-btn" style="margin-right: 10px;">Undo Move</button>
+                    <button id="btnSaveCreateGame" class="primary-btn">Save Game</button>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <div class="left-panel">
+                    <div class="board-container">
+                        <div id="createBoard" style="width: 100%"></div>
+                    </div>
+                </div>
+
+                <div class="right-panel" style="position: relative;">
+                    <div class="move-list-container" style="position: absolute; top: 0; bottom: 0; left: 0; right: 0; margin: 0; max-height: none; width: 100%;">
+                        <div class="move-list-header">
+                            <h3>Move List</h3>
+                        </div>
+                        <div id="createMoveList" class="move-list">
+                            <div class="empty-state">Make a move on the board to start.</div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Play Computer View -->
+        <div id="playComputerView" class="view-container" style="display: none;">
+            <header class="app-header">
+                <div class="header-left">
+                    <a id="btnBackFromPlay" href="/" data-route="/" class="nav-btn" style="width: auto; margin-right: 20px;">← Back to
+                        Games</a>
+                    <h1>Play vs Computer</h1>
+                </div>
+                <div class="header-right">
+                    <a href="/profile" data-route="/profile" class="secondary-btn btn-go-profile" style="margin-right: 10px;">Profile</a>
+                    <button id="btnNewGameComputer" class="secondary-btn" style="margin-right: 10px;">New Game</button>
+                    <button id="btnResignComputer" class="secondary-btn" style="margin-right: 10px;">Resign</button>
+                    <button id="btnSaveComputerGame" class="primary-btn">Save Game</button>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <div class="left-panel">
+                    <div class="board-container">
+                        <div id="playComputerBoard" style="width: 100%"></div>
+                        <div id="gameStatus" class="game-status">White to move</div>
+                    </div>
+                </div>
+
+                <div class="right-panel" style="position: relative;">
+                    <div class="move-list-container" style="position: absolute; top: 0; bottom: 0; left: 0; right: 0; margin: 0; max-height: none; width: 100%;">
+                        <div class="move-list-header">
+                            <h3>Move List</h3>
+                        </div>
+                        <div id="playComputerMoveList" class="move-list">
+                            <div class="empty-state">Start a new game to begin.</div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Training Coach View -->
+        <div id="trainingCoachView" class="view-container" style="display: none;">
+            <header class="app-header">
+                <div class="header-left">
+                    <a id="btnBackFromTraining" href="/" data-route="/" class="nav-btn" style="width: auto; margin-right: 20px;">← Back to
+                        Games</a>
+                    <h1>Training Coach</h1>
+                </div>
+                <div class="header-right">
+                    <a href="/profile" data-route="/profile" class="secondary-btn btn-go-profile" style="margin-right: 10px;">Profile</a>
+                    <button id="btnAnalyzeTraining" class="primary-btn">Analyze Recent Games</button>
+                </div>
+            </header>
+
+            <!-- Skill Profile Container -->
+            <div id="skillProfileSection" class="skill-profile-section">
+                <!-- Fallback / Initial State -->
+                <div id="skillProfileInitialState" class="training-panel profile-initial-state">
+                    <div class="profile-header-card">
+                        <div class="chesscom-badge">
+                            <span class="chesscom-icon">♟</span>
+                            <span id="profileUsernameText">No Synced Games Detected</span>
+                        </div>
+                        <h2 class="profile-title">Your Chess Skill Profile</h2>
+                        <p class="profile-subtitle">Analyze your synced Chess.com games with Stockfish to build your personal move accuracy profile and get tailored puzzle recommendations.</p>
+                        <div id="analysisProgressContainer" class="analysis-progress-container" style="display: none;">
+                            <div class="progress-info">
+                                <span id="progressText">Analyzing game 1 of 10...</span>
+                                <span id="progressPercentage">0%</span>
+                            </div>
+                            <div class="progress-bar-wrap">
+                                <div id="analysisProgressBar" class="progress-bar-fill" style="width: 0%;"></div>
+                            </div>
+                            <div id="progressDetailedStats" class="progress-detailed-stats">Evaluating user moves...</div>
+                        </div>
+                        <div class="profile-actions">
+                            <button id="btnStartSkillAnalysis" class="primary-btn accent-btn">Analyze My Games</button>
+                            <button id="btnStartGeneralTraining" class="secondary-btn">Start General Training</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard (Hidden by default, shown when profile exists) -->
+                <div id="skillProfileDashboard" class="skill-profile-dashboard" style="display: none;">
+                    
+                    <!-- Stats Grid -->
+                    <div class="dashboard-grid">
+                        
+                        <!-- Core Stats Panel -->
+                        <div class="training-panel glass-panel core-stats-panel">
+                            <div class="panel-header">
+                                <h3>Performance Summary</h3>
+                                <span class="profile-badge">Active Profile</span>
+                            </div>
+                            <div class="stats-row">
+                                <div class="stat-box">
+                                    <span class="stat-label">Games Analyzed</span>
+                                    <span id="statGamesCount" class="stat-value">0</span>
+                                </div>
+                                <div class="stat-box">
+                                    <span class="stat-label">Avg. Centipawn Loss</span>
+                                    <span id="statAvgCpl" class="stat-value">0</span>
+                                    <div class="cpl-indicator-wrap">
+                                        <div id="cplIndicatorBar" class="cpl-indicator-bar" style="width: 0%;"></div>
+                                    </div>
+                                    <span id="cplTierLabel" class="stat-subtext">Excellent</span>
+                                </div>
+                            </div>
+                            <div class="accuracy-metrics">
+                                <div class="metric-line">
+                                    <span>Puzzle Level</span>
+                                    <span id="statPuzzleRating">-</span>
+                                </div>
+                                <div class="metric-line">
+                                    <span>Blunder Rate</span>
+                                    <span id="metricBlunderRate">0%</span>
+                                </div>
+                                <div class="metric-line">
+                                    <span>Mistake Rate</span>
+                                    <span id="metricMistakeRate">0%</span>
+                                </div>
+                                <div class="metric-line">
+                                    <span>Inaccuracy Rate</span>
+                                    <span id="metricInaccuracyRate">0%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Move Accuracy Chart Panel -->
+                        <div class="training-panel glass-panel chart-panel">
+                            <div class="panel-header">
+                                <h3>Move Accuracy Distribution</h3>
+                            </div>
+                            <div class="accuracy-chart-container">
+                                <div class="donut-chart-wrap">
+                                    <div id="accuracyDonutChart" class="donut-chart" style="--best: 0%; --good: 0%; --inaccuracy: 0%; --mistake: 0%; --blunder: 0%;">
+                                        <div class="donut-center">
+                                            <span id="donutCenterPct">0%</span>
+                                            <span class="donut-center-sub">Accuracy</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="chart-legend">
+                                    <div class="legend-item"><span class="legend-color best"></span>Best/Excellent: <span id="legendBestVal">0</span></div>
+                                    <div class="legend-item"><span class="legend-color good"></span>Good: <span id="legendGoodVal">0</span></div>
+                                    <div class="legend-item"><span class="legend-color inaccuracy"></span>Inaccuracies: <span id="legendInaccuracyVal">0</span></div>
+                                    <div class="legend-item"><span class="legend-color mistake"></span>Mistakes: <span id="legendMistakeVal">0</span></div>
+                                    <div class="legend-item"><span class="legend-color blunder"></span>Blunders: <span id="legendBlunderVal">0</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Breakdown Grid -->
+                    <div class="dashboard-grid col-3">
+                        
+                        <!-- Phase Performance Panel -->
+                        <div class="training-panel glass-panel">
+                            <div class="panel-header">
+                                <h3>Phase Performance</h3>
+                            </div>
+                            <div class="phase-bars-container">
+                                <div class="phase-bar-item">
+                                    <div class="phase-bar-header">
+                                        <span>Opening (Moves 1-15)</span>
+                                        <span id="phaseOpeningVal">0 CPL</span>
+                                    </div>
+                                    <div class="phase-bar-wrap">
+                                        <div id="phaseOpeningBar" class="phase-bar-fill opening" style="width: 0%;"></div>
+                                    </div>
+                                </div>
+                                <div class="phase-bar-item">
+                                    <div class="phase-bar-header">
+                                        <span>Middlegame</span>
+                                        <span id="phaseMiddlegameVal">0 CPL</span>
+                                    </div>
+                                    <div class="phase-bar-wrap">
+                                        <div id="phaseMiddlegameBar" class="phase-bar-fill middlegame" style="width: 0%;"></div>
+                                    </div>
+                                </div>
+                                <div class="phase-bar-item">
+                                    <div class="phase-bar-header">
+                                        <span>Endgame (≤ 12 pieces)</span>
+                                        <span id="phaseEndgameVal">0 CPL</span>
+                                    </div>
+                                    <div class="phase-bar-wrap">
+                                        <div id="phaseEndgameBar" class="phase-bar-fill endgame" style="width: 0%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Color Split Performance Panel -->
+                        <div class="training-panel glass-panel">
+                            <div class="panel-header">
+                                <h3>Color Performance</h3>
+                            </div>
+                            <div class="color-split-container">
+                                <div class="color-split-box white-split">
+                                    <div class="color-split-header">
+                                        <span class="color-dot white"></span>
+                                        <span>As White</span>
+                                    </div>
+                                    <div class="color-split-cpl" id="colorWhiteCpl">0 CPL</div>
+                                    <div class="color-split-stats" id="colorWhiteStats">0% blunders</div>
+                                </div>
+                                <div class="color-split-box black-split">
+                                    <div class="color-split-header">
+                                        <span class="color-dot black"></span>
+                                        <span>As Black</span>
+                                    </div>
+                                    <div class="color-split-cpl" id="colorBlackCpl">0 CPL</div>
+                                    <div class="color-split-stats" id="colorBlackStats">0% blunders</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Weaknesses summary / recommendations panel -->
+                        <div class="training-panel glass-panel">
+                            <div class="panel-header">
+                                <h3>Coach Recommendations</h3>
+                            </div>
+                            <div class="recommendations-box">
+                                <p class="rec-summary-text" id="coachRecommendationsSummary">Analyze your games to discover weaknesses and get tailored puzzle themes.</p>
+                                <button id="btnPracticeRecommendations" class="primary-btn full-width-btn" style="display: none; margin-top: 15px;">Practice Recommended Puzzles</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <main class="training-layout">
+                <section class="training-panel">
+                    <div class="training-section-header">
+                        <h2>Improvement Summary</h2>
+                    </div>
+                    <p id="trainingSummary" class="training-summary">Analyze your recent games to discover targeted practice areas.</p>
+                    <div id="trainingLogs" class="training-logs"></div>
+                </section>
+
+                <section class="training-grid">
+                    <div class="training-panel">
+                        <div class="training-section-header">
+                            <h2>Recommended Puzzles</h2>
+                        </div>
+                        <div id="recommendedPuzzles" class="training-card-list">
+                            <div class="empty-state">No puzzles loaded yet.</div>
+                        </div>
+                    </div>
+
+                    <div id="trainingBoardFullscreenTarget" class="training-panel">
+                        <div class="training-section-header">
+                            <h2>Puzzle Trainer Board</h2>
+                        </div>
+                        <div class="training-board-wrap">
+                            <div id="trainingPuzzleBoard" style="width: 100%; max-width: 420px;"></div>
+                        </div>
+                        <div class="puzzle-gamification-stack">
+                            <div id="puzzleStreakCallout" class="puzzle-streak-callout">Current Streak: 0</div>
+                            <span id="puzzleHp" class="hp-meter" aria-label="HP: 5/5">
+                                <span class="hp-label" aria-hidden="true">HP</span>
+                                <span class="hp-hearts" aria-hidden="true">
+                                    <span class="hp-heart is-filled"></span>
+                                    <span class="hp-heart is-filled"></span>
+                                    <span class="hp-heart is-filled"></span>
+                                    <span class="hp-heart is-filled"></span>
+                                    <span class="hp-heart is-filled"></span>
+                                </span>
+                                <span class="visually-hidden">HP: 5/5</span>
+                            </span>
+                            <div id="puzzleSessionXp" class="puzzle-session-xp">Session XP: 0</div>
+                            <div id="puzzleXp" class="puzzle-xp-meter" title="Session XP: 0">
+                                <div class="progression-viewer level-map-shell">
+                                    <div class="level-map-header">
+                                        <div class="level-badge">1</div>
+                                        <div>
+                                            <span>Tactical Vision</span>
+                                            <strong>Puzzles</strong>
+                                        </div>
+                                        <small>Level 1</small>
+                                    </div>
+                                    <div class="level-map-coach">
+                                        <div class="coach-avatar" aria-hidden="true"><span class="coach-face">♟</span></div>
+                                        <div class="coach-speech">It's time to get solving!</div>
+                                    </div>
+                                    <div class="level-map-board" aria-label="Puzzle Coach level path">
+                                        <div class="level-map-decoration piece-left" aria-hidden="true">♙</div>
+                                        <div class="level-map-decoration piece-right" aria-hidden="true">♞</div>
+                                        <div class="level-map-decoration grass-one" aria-hidden="true"></div>
+                                        <div class="level-map-decoration grass-two" aria-hidden="true"></div>
+                                        <div class="level-map-path">
+                                            <div class="level-map-node-row slot-0 locked boss"><div class="boss-platform" aria-label="Tactics Goblin Upcoming boss"><span class="boss-crown">♛</span><span class="platform-side"></span></div><div class="level-node-caption boss-caption"><strong>Tactics Goblin</strong><small>Level 3 Boss</small></div></div>
+                                            <div class="level-map-node-row slot-1 unlocked level"><div class="level-platform" aria-label="Level 2 Next"><span class="platform-top">2</span><span class="platform-side"></span></div><div class="level-node-caption"><strong>Level 2</strong><small>Next</small></div></div>
+                                            <div class="level-map-node-row slot-2 current level"><div class="level-platform" aria-label="Level 1 Current"><span class="platform-top">1</span><span class="platform-side"></span></div><div class="level-node-caption"><strong>Level 1</strong><small>Current</small></div></div>
+                                        </div>
+                                    </div>
+                                    <div class="level-map-bottom">
+                                        <div class="level-map-progress">
+                                            <strong>0</strong>
+                                            <div class="level-map-progress-track" aria-label="XP progress 0%"><span style="width: 0%"></span></div>
+                                            <small>0/100 XP to Level 2</small>
+                                        </div>
+                                        <div class="level-map-actions">
+                                            <button type="button" class="level-map-menu-btn" aria-label="Puzzle stats">☰</button>
+                                            <button type="button" class="level-map-solve-btn" data-progression-action="solve">Solve Puzzles</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="bossBattleStatus" class="boss-battle-status" hidden>
+                                <span id="bossBattleName">Tactics Goblin</span>
+                                <span id="bossBattleHp">Player HP: 3/3</span>
+                                <span id="bossBattleProgress">Boss Progress: 0/5</span>
+                            </div>
+                        </div>
+                        <div class="puzzle-status-strip">
+                            <span id="puzzleSideToMove">Side to move: -</span>
+                            <span id="puzzleMoveProgress">Move 0 / 0</span>
+                            <span id="puzzleAccuracy">Puzzle Accuracy: -</span>
+                            <span id="puzzleCurrentStreak">Current Streak: 0</span>
+                            <span id="puzzlesLeftInSet">Puzzles left: 0</span>
+                        </div>
+                        <div id="puzzleFeedback" class="training-feedback">Choose a puzzle to begin.</div>
+                        <div class="puzzle-trainer-actions">
+                            <button id="btnPrevTrainingPuzzle" class="secondary-btn">Previous Puzzle</button>
+                            <button id="btnPrevPuzzleMove" class="secondary-btn">Previous Move</button>
+                            <button id="btnNextPuzzleMove" class="secondary-btn">Forward</button>
+                            <button id="btnNextTrainingPuzzle" class="secondary-btn">Next Puzzle</button>
+                            <button id="btnFullscreenPuzzleBoard" class="secondary-btn" aria-pressed="false" title="Toggle fullscreen puzzle board">Fullscreen Board</button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Chess Coach View -->
+        <div id="chessCoachView" class="view-container" style="display: none;">
+            <header class="app-header">
+                <div class="header-left">
+                    <a id="btnBackFromCoach" href="/" data-route="/" class="nav-btn" style="width: auto; margin-right: 20px;">← Back to
+                        Games</a>
+                    <h1>Chess Coach</h1>
+                </div>
+                <div class="header-right">
+                    <a href="/profile" data-route="/profile" class="secondary-btn btn-go-profile">Profile</a>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <div class="coach-layout">
+                    <!-- Panel 1: Board -->
+                    <div class="coach-board-panel">
+                        <div class="board-container">
+                            <div id="coachBoard" style="width: 100%"></div>
+                            <div class="board-navigation">
+                                <button id="btnCoachStart" class="nav-btn">Start</button>
+                                <button id="btnCoachPrev" class="nav-btn">Prev</button>
+                                <button id="btnCoachNext" class="nav-btn">Next</button>
+                                <button id="btnCoachEnd" class="nav-btn">End</button>
+                            </div>
+                        </div>
+                        <div class="move-list-container coach-moves">
+                            <div class="move-list-header">
+                                <h3>Variation Moves</h3>
+                            </div>
+                            <div id="coachMoveList" class="move-list">
+                                <div class="empty-state">Select a variation to see moves.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel 2: Variations -->
+                    <div class="coach-variations-panel">
+                        <div class="panel-header">
+                            <h3>Opening Lines Found</h3>
+                            <span id="variationCount" class="badge">0</span>
+                        </div>
+
+                        <div id="foundVariations" class="variations-list">
+                            <div class="empty-state">No variations found yet.</div>
+                        </div>
+                    </div>
+
+                    <!-- Panel 3: Chat -->
+                    <div class="coach-chat-panel">
+                        <div class="chat-container">
+                            <div class="chat-header">
+                                <h3>Coach Assistant</h3>
+                            </div>
+
+                            <div id="coachChatMessages" class="chat-messages coach-messages">
+                                <div class="message assistant">
+                                    Hello! I am your AI Chess Coach. What would you like to learn about today?
+                                </div>
+                            </div>
+
+                            <div class="chat-input-container">
+                                <textarea id="coachChatInput" placeholder="Ask a question..." rows="3"></textarea>
+                                <button id="sendCoachBtn" class="primary-btn">Ask</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Profile View -->
+        <div id="profileView" class="view-container" style="display: none;">
+            <header class="app-header">
+                <div class="header-left">
+                    <a id="btnBackFromProfile" href="/" data-route="/" class="nav-btn" style="width: auto; margin-right: 20px;">← Back to Games</a>
+                    <h1>Player Profile</h1>
+                </div>
+            </header>
+
+            <main class="profile-layout">
+                <!-- Left Column: Identity & XP -->
+                <div class="profile-left-col">
+                    <div class="profile-card glass-panel">
+                        <div class="avatar-container" id="profileAvatarContainer" title="Click to change avatar">
+                            <div class="profile-avatar gradient-gold" id="profileAvatarPiece">♔</div>
+                            <div class="avatar-overlay-hint">Change</div>
+                        </div>
+                        
+                        <div class="profile-user-info">
+                            <div class="username-display-wrapper">
+                                <h2 id="profileDisplayName">Chess Player</h2>
+                                <button id="btnEditUsername" class="icon-btn" title="Edit Username">✏️</button>
+                            </div>
+                            <div class="username-edit-wrapper" style="display: none;">
+                                <input type="text" id="inputLocalUsername" maxLength="20" placeholder="Enter username...">
+                                <div class="edit-actions">
+                                    <button id="btnSaveUsername" class="primary-btn">Save</button>
+                                    <button id="btnCancelEditUsername" class="secondary-btn">Cancel</button>
+                                </div>
+                            </div>
+                            <div class="chesscom-badge" id="profileChessComBadge">
+                                <span class="chesscom-icon">♟</span>
+                                <span id="profileChessComUsernameText">No Chess.com account connected</span>
+                            </div>
+                        </div>
+
+                        <div class="profile-xp-section">
+                            <div class="level-badge-container">
+                                <span class="level-label">Training Level</span>
+                                <span id="profileLevelVal" class="level-value">1</span>
+                            </div>
+                            <div class="xp-progress-container">
+                                <div class="xp-progress-bar-wrap">
+                                    <div id="profileXpBarFill" class="xp-progress-bar-fill" style="width: 0%;"></div>
+                                </div>
+                                <div class="xp-text-row">
+                                    <span id="profileXpText">0 XP</span>
+                                    <span id="profileXpNextLevelText">100 XP to next level</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Stats & Training Progress -->
+                <div class="profile-right-col">
+                    <!-- Game Stats Section -->
+                    <div class="profile-section-title">
+                        <h2>Game Statistics</h2>
+                    </div>
+                    <div class="stats-grid-container">
+                        <div class="profile-stat-card">
+                            <div class="stat-card-icon bg-blue">📊</div>
+                            <div class="stat-card-details">
+                                <span class="stat-card-label">Total Games</span>
+                                <span id="profileTotalGames" class="stat-card-value">0</span>
+                            </div>
+                        </div>
+                        <div class="profile-stat-card">
+                            <div class="stat-card-icon bg-green">🏆</div>
+                            <div class="stat-card-details">
+                                <span class="stat-card-label">Games Won</span>
+                                <span id="profileGamesWon" class="stat-card-value">0</span>
+                            </div>
+                        </div>
+                        <div class="profile-stat-card">
+                            <div class="stat-card-icon bg-red">💥</div>
+                            <div class="stat-card-details">
+                                <span class="stat-card-label">Games Lost</span>
+                                <span id="profileGamesLost" class="stat-card-value">0</span>
+                            </div>
+                        </div>
+                        <div class="profile-stat-card">
+                            <div class="stat-card-icon bg-yellow">🤝</div>
+                            <div class="stat-card-details">
+                                <span class="stat-card-label">Games Drawn</span>
+                                <span id="profileGamesDrawn" class="stat-card-value">0</span>
+                            </div>
+                        </div>
+                        <div class="profile-stat-card full-width-card">
+                            <div class="stat-card-icon bg-purple">📈</div>
+                            <div class="stat-card-details">
+                                <span class="stat-card-label">Win Rate</span>
+                                <span id="profileWinRate" class="stat-card-value">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Training Progress Section -->
+                    <div class="profile-section-title" style="margin-top: 30px;">
+                        <h2>Training Progress</h2>
+                    </div>
+                    <div class="training-progress-panel glass-panel">
+                        <div class="training-stats-row">
+                            <div class="training-stat-item">
+                                <span class="training-item-label">Puzzles Solved</span>
+                                <span id="profilePuzzlesSolved" class="training-item-value">0</span>
+                            </div>
+                            <div class="training-stat-item">
+                                <span class="training-item-label">Current Streak</span>
+                                <span id="profileCurrentStreakVal" class="training-item-value">0</span>
+                            </div>
+                            <div class="training-stat-item">
+                                <span class="training-item-label">Best Streak</span>
+                                <span id="profileBestStreak" class="training-item-value">0</span>
+                            </div>
+                        </div>
+                        <div class="activity-timeline-section">
+                            <h3>Training Activity</h3>
+                            <div id="profileRecentActivity" class="timeline-container">
+                                <div class="timeline-empty-state">No training activity yet. Play in Training Coach to start earning XP!</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Save Game Modal -->
+    <div id="saveGameModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>Save Game</h2>
+            <p>Enter the game details to save it to your library.</p>
+            <div class="form-group">
+                <label for="sgEvent">Event / Game Name</label>
+                <input type="text" id="sgEvent" placeholder="e.g. My Training Game">
+            </div>
+            <div class="form-group">
+                <label for="sgWhite">White Player</label>
+                <input type="text" id="sgWhite" placeholder="White">
+            </div>
+            <div class="form-group">
+                <label for="sgBlack">Black Player</label>
+                <input type="text" id="sgBlack" placeholder="Black">
+            </div>
+            <div class="form-group">
+                <label for="sgWinner">Winner</label>
+                <select id="sgWinner">
+                    <option value="Draw">Draw</option>
+                    <option value="White">White</option>
+                    <option value="Black">Black</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button id="btnCancelSave" class="secondary-btn">Cancel</button>
+                <button id="btnConfirmSave" class="primary-btn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Setup Modal -->
+    <div id="playerSetupModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>New Game vs Computer</h2>
+            <p>Configure your match against Stockfish.</p>
+            <div class="form-group">
+                <label for="psName">Your Name</label>
+                <input type="text" id="psName" placeholder="e.g. Ayden">
+            </div>
+            <div class="form-group">
+                <label for="psColor">Play As</label>
+                <select id="psColor">
+                    <option value="white">White</option>
+                    <option value="black">Black</option>
+                    <option value="random">Random</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="psEloSlider" id="psEloLabel">Computer Strength: 1200 Elo — Medium</label>
+                <input type="range" id="psEloSlider" min="100" max="2500" step="50" value="1200" class="elo-slider">
+                <div class="disclaimer-text">The lower the Elo, the easier the opponent. Difficulty labels are estimates and may not exactly match real player strength.</div>
+            </div>
+            <div class="modal-actions">
+                <button id="btnCancelSetup" class="secondary-btn">Cancel</button>
+                <button id="btnStartGame" class="primary-btn">Start Game</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Avatar Selector Modal -->
+    <div id="avatarModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content avatar-modal-content">
+            <h2>Select Avatar</h2>
+            <p>Choose your chess piece icon and theme gradient color.</p>
+            
+            <div class="avatar-option-section">
+                <h3>Chess Piece Icon</h3>
+                <div class="piece-options" id="avatarPieceOptions">
+                    <button class="piece-opt" data-piece="♔">♔</button>
+                    <button class="piece-opt" data-piece="♕">♕</button>
+                    <button class="piece-opt" data-piece="♖">♖</button>
+                    <button class="piece-opt" data-piece="♗">♗</button>
+                    <button class="piece-opt" data-piece="♘">♘</button>
+                    <button class="piece-opt" data-piece="♙">♙</button>
+                </div>
+            </div>
+            
+            <div class="avatar-option-section" style="margin-top: 20px;">
+                <h3>Theme Gradient Color</h3>
+                <div class="theme-options" id="avatarThemeOptions">
+                    <button class="theme-opt gradient-gold" data-theme="gold" title="Gold"></button>
+                    <button class="theme-opt gradient-emerald" data-theme="emerald" title="Emerald"></button>
+                    <button class="theme-opt gradient-azure" data-theme="azure" title="Azure"></button>
+                    <button class="theme-opt gradient-amethyst" data-theme="amethyst" title="Amethyst"></button>
+                    <button class="theme-opt gradient-crimson" data-theme="crimson" title="Crimson"></button>
+                    <button class="theme-opt gradient-slate" data-theme="slate" title="Slate"></button>
+                </div>
+            </div>
+            
+            <div class="modal-actions" style="margin-top: 30px;">
+                <button id="btnCancelAvatar" class="secondary-btn">Cancel</button>
+                <button id="btnConfirmAvatar" class="primary-btn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery is required by chessboard.js -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <!-- chessboard.js -->
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <!-- chess.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <!-- Custom JS -->
+    <script src="../engineAdapter.js?v=route-20260606"></script>
+    <script src="../compressionService.js?v=route-20260606"></script>
+    <script src="../playComputer.js?v=route-20260606"></script>
+    <script src="../app.js?v=route-20260606"></script>
+    <script src="../training/skillAnalysisEngine.js?v=route-20260606"></script>
+    <script src="../training/skillProfileBuilder.js?v=route-20260606"></script>
+    <script src="../training/trainingCoachUI.js?v=route-20260606"></script>
+</body>
+
+</html>

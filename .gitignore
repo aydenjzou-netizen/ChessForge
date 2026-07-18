@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Operating-system and editor files
+.DS_Store
+.idea/
+.vscode/
+
+# Runtime data, generated files, and logs
+backend/game-storage/
+data/puzzles/lichess_db_puzzle.csv
+*.log
+
+# Scratch files
+scratch/
