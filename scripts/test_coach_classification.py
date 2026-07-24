@@ -1,35 +1,60 @@
-import sys
 import os
+import sys
 
-# Add the project root to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from coach_rag import classify_coach_query
+from coach_rag import CoachRAGEngine
 
-test_cases = [
-    "Teach me the Italian Game",
-    "What is the Sicilian Defense?",
-    "Explain the King's Indian",
-    "What gambits come from the Queen's Gambit?",
-    "What should I play after 1.e4 e5 2.Nf3?",
-    "What is a fork?",
-    "Teach me pins and skewers",
-    "How do I find checkmate tactics?",
-    "Explain discovered attacks",
-    "What is a deflection?",
-    "How do I win king and pawn endgames?",
-    "Teach me rook endgames",
-    "What is opposition?",
-    "How do I checkmate with king and queen?",
-    "What are passed pawns?",
-    "hello",
-    "how do I improve at chess?"
+
+CASES = [
+    (
+        "Teach me the Italian Game",
+        {
+            "category": "opening",
+            "score": 0.95,
+            "openingName": "Italian Game",
+            "content": "Opening Name: Italian Game",
+            "usedInAnswer": False,
+        },
+        "opening",
+    ),
+    (
+        "What is a fork?",
+        {
+            "category": "tactic",
+            "score": 0.92,
+            "openingName": "Unknown",
+            "content": "A fork attacks two pieces.",
+            "usedInAnswer": False,
+        },
+        "tactic",
+    ),
+    (
+        "Teach me rook endgames",
+        {
+            "category": "endgame",
+            "score": 0.91,
+            "openingName": "Unknown",
+            "content": "Rook endgame fundamentals.",
+            "usedInAnswer": False,
+        },
+        "endgame",
+    ),
 ]
 
-print("--- Chess Coach Classification Tests ---")
-for query in test_cases:
-    result = classify_coach_query(query)
-    print(f"\nUser query: {query}")
-    print(f"Classified as: {result['type']}")
-    print(f"Confidence: {result['confidence']}")
-    print(f"Reason: {result['reason']}")
+
+def main() -> None:
+    engine = CoachRAGEngine()
+    assert engine.status == "ready", f"expected ready index, got {engine.status}"
+    for question, evidence, expected in CASES:
+        result = engine.route_query(question, evidence=[evidence])
+        actual = result.get("primaryType") or result.get("type")
+        assert actual == expected, f"{question!r}: expected {expected}, got {actual}"
+    print(
+        f"coach classification: {len(CASES)} cases passed "
+        f"with {len(engine.chunks)} indexed chunks and no live inference"
+    )
+
+
+if __name__ == "__main__":
+    main()

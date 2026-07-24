@@ -9,10 +9,6 @@ const {
     getDifficultyRangeForLevel
 } = require('./puzzleRetriever');
 
-const fs = require('fs');
-const path = require('path');
-const SKILL_PROFILE_PATH = path.join(__dirname, '..', '..', 'backend', 'game-storage', 'skill-profile.json');
-
 function createEmptyProfile() {
     return {
         gamesAnalyzed: 0,
@@ -22,26 +18,6 @@ function createEmptyProfile() {
         puzzleDatabaseMessage: getPuzzleDatabaseStatusMessage(),
         logs: []
     };
-}
-
-let currentProfile = {
-    gamesAnalyzed: 0,
-    lastUpdated: null,
-    weaknesses: [],
-    recommendedPuzzles: [],
-    puzzleDatabaseMessage: getPuzzleDatabaseStatusMessage(),
-    logs: []
-};
-
-// Try loading existing profile on start
-try {
-    if (fs.existsSync(SKILL_PROFILE_PATH)) {
-        const data = fs.readFileSync(SKILL_PROFILE_PATH, 'utf8');
-        currentProfile = JSON.parse(data);
-        currentProfile.puzzleDatabaseMessage = getPuzzleDatabaseStatusMessage();
-    }
-} catch (err) {
-    console.warn('[TrainingCoach] Could not load saved skill profile on startup:', err.message);
 }
 
 function logLine(message, logs) {
@@ -129,7 +105,7 @@ async function analyzeTrainingProfile(savedGames, options = {}) {
         excludeIds: options.excludeIds || []
     });
 
-    currentProfile = {
+    const profile = {
         gamesAnalyzed: analysis.gamesAnalyzed,
         lastUpdated: new Date().toISOString(),
         summary: summarizeWeaknesses(weaknesses),
@@ -147,18 +123,12 @@ async function analyzeTrainingProfile(savedGames, options = {}) {
         logs
     };
 
-    // Save automatically to disk
-    saveSkillProfile(currentProfile);
-
-    return currentProfile;
-}
-
-function getTrainingProfile() {
-    return currentProfile;
+    return profile;
 }
 
 function getTrainingPuzzles(theme, options = {}) {
-    const targetRating = Number(options.targetRating) || currentProfile.estimatedPuzzleRating || null;
+    const profile = options.profile || createEmptyProfile();
+    const targetRating = Number(options.targetRating) || profile.estimatedPuzzleRating || null;
     const level = Number(options.level) || null;
     const isBoss = options.boss === true;
     const puzzles = getPuzzlesForTheme(theme || 'tacticalAwareness', {
@@ -178,37 +148,8 @@ function getTrainingPuzzles(theme, options = {}) {
     };
 }
 
-function saveSkillProfile(profile) {
-    try {
-        const dir = path.dirname(SKILL_PROFILE_PATH);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        fs.writeFileSync(SKILL_PROFILE_PATH, JSON.stringify(profile, null, 2), 'utf8');
-        currentProfile = profile;
-        return true;
-    } catch (err) {
-        console.error('[TrainingCoach] Failed to save skill profile to disk:', err);
-        return false;
-    }
-}
-
-function clearSkillProfile() {
-    currentProfile = createEmptyProfile();
-    try {
-        if (fs.existsSync(SKILL_PROFILE_PATH)) {
-            fs.unlinkSync(SKILL_PROFILE_PATH);
-        }
-    } catch (err) {
-        console.error('[TrainingCoach] Failed to clear skill profile from disk:', err);
-    }
-    return currentProfile;
-}
-
 module.exports = {
     analyzeTrainingProfile,
-    getTrainingProfile,
     getTrainingPuzzles,
-    saveSkillProfile,
-    clearSkillProfile
+    createEmptyProfile
 };

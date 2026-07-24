@@ -4,7 +4,11 @@
   "scripts": {
     "backend": "cd backend && node server.js",
     "frontend": "npx vite static",
-    "dev": "npx concurrently \"npm run backend\" \"npm run frontend\""
+    "dev": "npx concurrently \"npm run backend\" \"npm run frontend\"",
+    "phase0:snapshot": "node scripts/phase0_snapshot.js",
+    "phase0:verify": "node scripts/verify_phase0_snapshot.js",
+    "phase0:browser:validate": "node scripts/validate_browser_storage_export.js",
+    "test:phase0": "cd backend && node --test test/*.test.js && cd .. && python3 scripts/test_coach_classification.py && node scripts/verify_phase0_snapshot.js && node scripts/validate_browser_storage_export.js --input scripts/fixtures/browser-storage-export.fixture.json"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

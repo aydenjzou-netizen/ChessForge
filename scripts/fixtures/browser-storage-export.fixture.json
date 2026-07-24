@@ -1,0 +1,25 @@
+{
+  "schema": "chessforge-browser-storage-export-v1",
+  "exportedAt": "2026-07-24T00:00:00.000Z",
+  "origin": "http://localhost:8001",
+  "keys": [
+    "chess_account_profiles",
+    "chess_com_username",
+    "chess_recent_activity",
+    "chess_saved_games",
+    "training_current_streak",
+    "training_player_profile",
+    "training_total_xp",
+    "training_weakness_profile"
+  ],
+  "values": {
+    "chess_account_profiles": "{}",
+    "chess_com_username": "phase0-fixture",
+    "chess_recent_activity": "[]",
+    "chess_saved_games": "[]",
+    "training_current_streak": "0",
+    "training_player_profile": "{}",
+    "training_total_xp": "0",
+    "training_weakness_profile": "{}"
+  }
+}
