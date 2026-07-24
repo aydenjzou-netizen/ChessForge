@@ -19,6 +19,7 @@ venv/
 
 # Runtime data, generated files, and logs
 backend/game-storage/
+backend/app-data/
 data/puzzles/lichess_db_puzzle.csv
 *.log
 

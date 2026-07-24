@@ -9,11 +9,50 @@ import os
 import requests
 import time
 import re
+import json
+import logging
+import uuid
 
 from coach_rag import CoachRAGEngine
 
 app = FastAPI(title="Chess PGN Viewer")
 coach_engine = None
+service_logger = logging.getLogger("chessforge.ai_api")
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper(), format="%(message)s")
+
+
+def log_event(level: str, event: str, **fields) -> None:
+    record = {
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "level": level,
+        "service": "chessforge-ai-api",
+        "event": event,
+        **fields,
+    }
+    getattr(service_logger, level, service_logger.info)(json.dumps(record, default=str))
+
+
+@app.middleware("http")
+async def request_context(request, call_next):
+    request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
+    request.state.request_id = request_id
+    started_at = time.perf_counter()
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        response.headers["x-request-id"] = request_id
+        return response
+    finally:
+        log_event(
+            "info",
+            "http.request.completed",
+            requestId=request_id,
+            method=request.method,
+            path=request.url.path,
+            statusCode=status_code,
+            latencyMs=round((time.perf_counter() - started_at) * 1000, 2),
+        )
 
 # Enable CORS for local development
 app.add_middleware(
@@ -24,9 +63,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-OLLAMA_MODEL = "phi3:mini"
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MAX_PROMPT_CHARS = 6000
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "phi3:mini")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+OLLAMA_URL = f"{OLLAMA_BASE_URL}/api/generate"
+MAX_PROMPT_CHARS = int(os.getenv("MAX_PROMPT_CHARS", "6000"))
 
 class ChatRequest(BaseModel):
     message: str
@@ -584,27 +624,32 @@ USER QUESTION:
     fen_n = count_fens_in_evidence(evidence_trimmed)
     grounded = bool(evidence_trimmed) and evidence_str.strip() != "None provided."
 
-    print(f"[AnalystRAG] User query: {req.message}")
-    print(f"[AnalystRAG] Classified intent: {category}")
-    print(f"[AnalystRAG] Retrieval strategy: {retrieval.strategy}")
-    print(f"[AnalystRAG] Retrieved evidence count: {n_items}")
-    print(f"[AnalystRAG] Move window used: {retrieval.window_label}")
-    print(f"[AnalystRAG] FEN positions included: {fen_n}")
-    print(f"[AnalystRAG] Evidence preview: {preview}")
-    print(f"[AnalystRAG] Final answer grounded: {grounded}")
+    log_event(
+        "info",
+        "analyst.retrieval.completed",
+        category=category,
+        strategy=retrieval.strategy,
+        evidenceCount=n_items,
+        moveWindow=retrieval.window_label,
+        fenCount=fen_n,
+        grounded=grounded,
+    )
 
     start_time = time.time()
-    print(f"--- Chat Request ---")
-    print(f"Question: {req.message}")
-    print(f"Detected category: {category}")
-    print(f"Evidence chunks after trim: {n_items}")
-    print(f"Prompt Length: {len(prompt)}")
-    print(f"Selected Move: {req.selectedMove}")
+    log_event(
+        "info",
+        "analyst.inference.started",
+        category=category,
+        evidenceCount=n_items,
+        promptChars=len(prompt),
+        selectedMoveProvided=bool(req.selectedMove),
+        gameId=req.gameId,
+    )
 
     try:
         response = requests.post(OLLAMA_URL, json=payload, timeout=timeout_val)
         elapsed = time.time() - start_time
-        print(f"Ollama Response Time: {elapsed:.2f}s")
+        log_event("info", "analyst.inference.completed", latencyMs=round(elapsed * 1000, 2))
 
         if response.status_code == 404:
             return {"error": f"Model not found. Install it with: ollama pull {OLLAMA_MODEL}"}
@@ -617,20 +662,22 @@ USER QUESTION:
         return {"error": "Ollama is not running. Start it with: ollama serve"}
     except requests.exceptions.Timeout:
         elapsed = time.time() - start_time
-        print(f"Timeout after {elapsed:.2f}s")
+        log_event("warn", "analyst.inference.timeout", latencyMs=round(elapsed * 1000, 2))
         return {"error": "Ollama took too long to respond. Try a shorter PGN context or restart Ollama."}
-    except Exception as e:
-        return {"error": f"An error occurred: {str(e)}"}
+    except Exception as error:
+        log_event("error", "analyst.inference.failed", errorType=type(error).__name__)
+        return {"error": "The analysis service could not complete the request."}
 
 @app.get("/api/ollama-health")
 def ollama_health():
     try:
-        response = requests.get("http://localhost:11434/", timeout=5)
+        response = requests.get(f"{OLLAMA_BASE_URL}/", timeout=5)
         if response.status_code == 200:
             return {"status": "ok", "message": "Ollama is reachable"}
         return {"status": "error", "message": "Ollama returned non-200"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    except Exception as error:
+        log_event("warn", "ollama.health.unavailable", errorType=type(error).__name__)
+        return {"status": "error", "message": "Ollama is unavailable"}
 
 class CoachRequest(BaseModel):
     message: str
@@ -643,20 +690,20 @@ def coach_chat(req: CoachRequest):
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
     
     start_time = time.time()
-    print(f"--- Coach Request ---")
-    print(f"Question: {req.message}")
+    log_event("info", "coach.query.started", proficiencyLevel=req.proficiencyLevel)
     
     try:
         if coach_engine is None:
-            print("App: CoachRAGEngine lazy initialization started")
+            log_event("info", "coach.engine.initialization.started")
             coach_engine = CoachRAGEngine()
             
         reply = coach_engine.query(req.message, proficiency_level=req.proficiencyLevel)
         elapsed = time.time() - start_time
-        print(f"Coach Response Time: {elapsed:.2f}s")
+        log_event("info", "coach.query.completed", latencyMs=round(elapsed * 1000, 2))
         return reply
-    except Exception as e:
-        return {"error": f"An error occurred: {str(e)}"}
+    except Exception as error:
+        log_event("error", "coach.query.failed", errorType=type(error).__name__)
+        return {"error": "The coaching service could not complete the request."}
 
 # Ensure static directory exists
 os.makedirs("static", exist_ok=True)
@@ -686,4 +733,9 @@ if __name__ == "__main__":
         print("Vector Store NOT found. Will be created on first coach query.")
 
     print("Starting Chess App on http://localhost:8001")
-    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run(
+        "main:app",
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", "8001")),
+        reload=os.getenv("RELOAD", "true").lower() in {"1", "true", "yes"},
+    )
