@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer-when-downgrade">
     <title>AI Chess PGN Viewer</title>
     <link rel="icon" href="/apple-touch-icon.png" type="image/png">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -16,6 +17,8 @@
 </head>
 
 <body>
+    <div id="google-auth-root"></div>
+    <a href="/privacy.html" class="privacy-notice-link" target="_blank" rel="noreferrer">Privacy</a>
     <div class="app-container">
         <!-- Home View -->
         <div id="homeView" class="view-container">
@@ -918,6 +921,7 @@
         </div>
     </div>
 
+    <script type="module" src="/auth/main.jsx"></script>
     <!-- jQuery is required by chessboard.js -->
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <!-- chessboard.js -->

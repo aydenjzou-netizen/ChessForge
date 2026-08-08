@@ -1891,6 +1891,10 @@ function getChessComUsername() {
     return '';
 }
 
+function isChessComPrivacyAllowed() {
+    return window.chessForgePrivacy?.entitlements?.chesscom_link === true;
+}
+
 function setChessComUsername(username) {
     if (username) {
         const normalizedUsername = normalizeChessComUsername(username);
@@ -1986,7 +1990,10 @@ function renderProfileMenuState() {
     }
     const connectItem = profileDropdown && profileDropdown.querySelector('[data-profile-action="connect-chesscom"]');
     if (connectItem) {
-        connectItem.innerText = isConnected ? 'Manage Chess.com Connection' : 'Connect to Chess.com';
+        const allowed = isChessComPrivacyAllowed();
+        connectItem.disabled = !allowed;
+        connectItem.setAttribute('aria-disabled', String(!allowed));
+        connectItem.innerText = allowed ? (isConnected ? 'Manage Chess.com Connection' : 'Connect to Chess.com') : 'Chess.com linking requires privacy approval';
     }
 }
 
@@ -2357,6 +2364,10 @@ function setChessComSyncRunning(isRunning) {
 }
 
 function openChessComSyncModal() {
+    if (!isChessComPrivacyAllowed()) {
+        alert('Chess.com linking is off. Enable it in the ChessForge Privacy Center or ask your guardian to approve it.');
+        return;
+    }
     const modal = buildChessComSyncModal();
     const usernameInput = document.getElementById('chessComUsername');
     const summary = document.getElementById('chessComConnectionSummary');
@@ -2377,6 +2388,10 @@ function openChessComSyncModal() {
 }
 
 async function connectChessComAccount() {
+    if (!isChessComPrivacyAllowed()) {
+        alert('Chess.com linking is not approved for this account.');
+        return;
+    }
     const usernameInput = document.getElementById('chessComUsername');
     const modal = document.getElementById('chessComSyncModal');
     const username = normalizeChessComUsername(usernameInput && usernameInput.value);
@@ -2427,12 +2442,14 @@ async function disconnectChessComAccount() {
 }
 
 async function fetchChessComJson(url) {
+    if (!isChessComPrivacyAllowed()) throw new Error('Chess.com linking is not approved for this account.');
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Request failed (${response.status})`);
     return response.json();
 }
 
 async function fetchChessComText(url) {
+    if (!isChessComPrivacyAllowed()) throw new Error('Chess.com linking is not approved for this account.');
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Request failed (${response.status})`);
     return response.text();
@@ -2582,6 +2599,7 @@ async function syncChessComGames() {
 }
 
 function startBackgroundChessComSync() {
+    if (!isChessComPrivacyAllowed()) return;
     if (chessComBackgroundSyncStarted) return;
 
     const username = getChessComUsername();
@@ -4285,6 +4303,11 @@ coachChatInput.addEventListener('keypress', (e) => {
 // Initialize on load
 window.addEventListener('popstate', () => {
     applyAppRoute();
+});
+window.addEventListener('chessforge:privacy-changed', () => {
+    if (isChessComPrivacyAllowed()) startBackgroundChessComSync();
+    else disableChessComBackgroundSync();
+    renderProfileMenuState();
 });
 
 renderDashboardHome();

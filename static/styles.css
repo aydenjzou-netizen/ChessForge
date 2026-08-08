@@ -5478,3 +5478,5 @@ body > .piece-417db {
     transform: scale(1.1);
     box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
 }
+/* Persistent legal-navigation link; account-specific controls are in the Privacy Center. */
+.privacy-notice-link { position: fixed; left: 12px; bottom: 10px; z-index: 9000; padding: 6px 9px; border-radius: 7px; background: rgba(255,255,255,.94); color: #245f9e; font: 600 12px/1.2 Inter,sans-serif; box-shadow: 0 2px 8px rgba(0,0,0,.12); }

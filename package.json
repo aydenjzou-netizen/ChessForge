@@ -2,9 +2,15 @@
   "name": "chess-system",
   "version": "1.0.0",
   "scripts": {
-    "backend": "cd backend && node server.js",
+    "backend": "npm --prefix backend start",
     "frontend": "npx vite static",
     "dev": "npx concurrently \"npm run backend\" \"npm run frontend\"",
+    "db:local:up": "docker compose up -d postgres",
+    "db:local:down": "docker compose down",
+    "db:local:prepare": "cd backend && STORAGE_MODE=postgres DATABASE_URL=postgresql://chessforge:local-development-only@localhost:5432/chessforge npm run db:prepare",
+    "backend:azure": "node backend/scripts/startAzure.js",
+    "db:prepare": "cd backend && npm run db:prepare",
+    "db:verify": "cd backend && npm run db:verify",
     "phase0:snapshot": "node scripts/phase0_snapshot.js",
     "phase0:verify": "node scripts/verify_phase0_snapshot.js",
     "phase0:browser:validate": "node scripts/validate_browser_storage_export.js",
@@ -14,6 +20,8 @@
     "concurrently": "^8.2.2"
   },
   "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
     "stockfish.js": "^10.0.2"
   }
 }

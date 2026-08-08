@@ -4,51 +4,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer-when-downgrade">
     <title>AI Chess PGN Viewer</title>
+    <link rel="icon" href="/assets/apple-touch-icon-BkJgDOsf.png" type="image/png">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon-BkJgDOsf.png">
     <!-- Use standard Inter font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- chessboard.js CSS -->
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="../styles.css">
+  <script type="module" crossorigin src="/assets/index-alFEicXT.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-YwM0eu11.css">
 </head>
 
 <body>
+    <div id="google-auth-root"></div>
+    <a href="/privacy.html" class="privacy-notice-link" target="_blank" rel="noreferrer">Privacy</a>
     <div class="app-container">
         <!-- Home View -->
         <div id="homeView" class="view-container">
-            <header class="app-header">
-                <h1>Chess Game Library</h1>
-                <div class="header-right">
-                    <div class="sort-container">
-                        <button id="sortBtn" class="secondary-btn">Sort</button>
-                        <div id="sortDropdown" class="sort-dropdown" style="display: none;">
-                            <div class="sort-option" data-sort="alpha">Alphabetical Order</div>
-                            <div class="sort-option" data-sort="time">Time Added</div>
-                            <div class="sort-option" data-sort="winner">Winner</div>
-                        </div>
+            <header class="app-header dashboard-header-card">
+                <div class="dashboard-header-brand">
+                    <img class="dashboard-header-icon" src="/assets/apple-touch-icon-BkJgDOsf.png" alt="" aria-hidden="true">
+                    <div class="dashboard-header-copy">
+                        <h1>Welcome back, <span id="dashboardUsername">Chess Player</span>! 👋</h1>
+                        <p>What would you like to improve today?</p>
                     </div>
+                </div>
+                <div class="header-right">
                     <div class="upload-container">
-                        <a id="btnProfileNav" href="/profile" data-route="/profile" class="secondary-btn btn-go-profile" style="margin-right: 10px;">Profile</a>
-                        <a id="btnPlayComputer" href="/play-computer" data-route="/play-computer" class="secondary-btn" style="margin-right: 10px;">Play
+                        <div class="profile-menu nav-menu" id="profileMenu">
+                            <button id="btnProfileMenu" class="secondary-btn profile-menu-trigger nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+                                <span class="profile-menu-status-dot" aria-hidden="true"></span>
+                                Profile <span class="nav-chevron" aria-hidden="true">▾</span>
+                            </button>
+                            <div id="profileDropdown" class="profile-dropdown nav-dropdown" role="menu">
+                                <div id="profileConnectionStatus" class="profile-connection-status">
+                                    <span class="profile-connection-dot" aria-hidden="true"></span>
+                                    <span>No Chess.com account connected</span>
+                                </div>
+                                <button type="button" class="profile-dropdown-item nav-dropdown-item" data-profile-action="view-profile" role="menuitem">View Profile</button>
+                                <button type="button" class="profile-dropdown-item nav-dropdown-item" data-profile-action="account-settings" role="menuitem">Account Settings</button>
+                                <button type="button" class="profile-dropdown-item nav-dropdown-item" data-profile-action="connect-chesscom" role="menuitem">Connect to Chess.com</button>
+                                <button type="button" class="profile-dropdown-item nav-dropdown-item danger" data-profile-action="sign-out" role="menuitem">Sign Out</button>
+                            </div>
+                        </div>
+                        <a id="btnPlayComputer" href="/play-computer" data-route="/play-computer" class="secondary-btn nav-single-link">Play
                             Computer</a>
-                        <a id="btnChessCoach" href="/openings" data-route="/openings" class="secondary-btn" style="margin-right: 10px;">Chess Coach</a>
-                        <a id="btnTrainingCoach" href="/training" data-route="/training" class="secondary-btn" style="margin-right: 10px;">Training Coach</a>
-                        <a id="btnCreateGame" href="/create-game" data-route="/create-game" class="primary-btn" style="margin-right: 10px;">Create Game</a>
+                        <div class="nav-menu" id="coachMenu">
+                            <button id="btnCoachMenu" class="secondary-btn nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+                                Coach <span class="nav-chevron" aria-hidden="true">▾</span>
+                            </button>
+                            <div id="coachDropdown" class="nav-dropdown compact-nav-dropdown" role="menu">
+                                <a id="btnChessCoach" href="/openings" data-route="/openings" class="nav-dropdown-item" role="menuitem">Chess Coach</a>
+                                <a id="btnTrainingCoach" href="/training" data-route="/training" class="nav-dropdown-item" role="menuitem">Training Coach</a>
+                            </div>
+                        </div>
+                        <div class="nav-menu" id="newGameMenu">
+                            <button id="btnNewGameMenu" class="primary-btn nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+                                New Game <span class="nav-chevron" aria-hidden="true">▾</span>
+                            </button>
+                            <div id="newGameDropdown" class="nav-dropdown compact-nav-dropdown" role="menu">
+                                <button id="btnUploadGameMenu" type="button" class="nav-dropdown-item" role="menuitem">Upload Game</button>
+                                <a id="btnCreateGame" href="/create-game" data-route="/create-game" class="nav-dropdown-item" role="menuitem">Create Game</a>
+                            </div>
+                        </div>
                         <input type="file" id="pgnInput" accept=".pgn" class="file-input">
-                        <label for="pgnInput" class="primary-btn">Upload New Game</label>
                     </div>
                 </div>
             </header>
 
-            <div class="library-toolbar">
-                <small id="currentSortLabel">Sorted by: Time Added</small>
-            </div>
+            <main id="dashboardHome" class="dashboard-home" aria-label="Chess training dashboard"></main>
 
-            <div id="gameLibrary" class="game-library">
-                <!-- Game cards will be populated here -->
-                <div class="empty-state">No saved games yet. Upload a PGN to get started.</div>
-            </div>
+            <section id="fullGameLibrarySection" class="dashboard-library-section" hidden>
+                <div class="dashboard-section-heading">
+                    <div>
+                        <h2>Full Game Library</h2>
+                        <p>Browse games grouped by winner, then open, delete, or analyze any saved game.</p>
+                    </div>
+                    <button id="btnHideGameLibrary" class="secondary-btn" type="button">Hide Library</button>
+                </div>
+
+                <div class="library-toolbar">
+                    <small id="currentSortLabel">Sorted by: Winner</small>
+                </div>
+
+                <div id="gameLibrary" class="game-library">
+                    <!-- Game cards will be populated here -->
+                    <div class="empty-state">No saved games yet. Upload a PGN to get started.</div>
+                </div>
+            </section>
         </div>
 
         <!-- Winner Group View -->
@@ -273,11 +318,14 @@
                                 <span class="profile-badge">Active Profile</span>
                             </div>
                             <div class="stats-row">
-                                <div class="stat-box">
+                                <div class="stat-box stat-box-blue">
+                                    <span class="stat-icon" aria-hidden="true">♙</span>
                                     <span class="stat-label">Games Analyzed</span>
                                     <span id="statGamesCount" class="stat-value">0</span>
+                                    <span class="stat-subtext">Profile sample</span>
                                 </div>
-                                <div class="stat-box">
+                                <div class="stat-box stat-box-red">
+                                    <span class="stat-icon" aria-hidden="true">⌁</span>
                                     <span class="stat-label">Avg. Centipawn Loss</span>
                                     <span id="statAvgCpl" class="stat-value">0</span>
                                     <div class="cpl-indicator-wrap">
@@ -288,19 +336,19 @@
                             </div>
                             <div class="accuracy-metrics">
                                 <div class="metric-line">
-                                    <span>Puzzle Level</span>
+                                    <span><span class="metric-icon" aria-hidden="true">▥</span>Puzzle Level</span>
                                     <span id="statPuzzleRating">-</span>
                                 </div>
                                 <div class="metric-line">
-                                    <span>Blunder Rate</span>
+                                    <span><span class="metric-icon" aria-hidden="true">×</span>Blunder Rate</span>
                                     <span id="metricBlunderRate">0%</span>
                                 </div>
                                 <div class="metric-line">
-                                    <span>Mistake Rate</span>
+                                    <span><span class="metric-icon" aria-hidden="true">!</span>Mistake Rate</span>
                                     <span id="metricMistakeRate">0%</span>
                                 </div>
                                 <div class="metric-line">
-                                    <span>Inaccuracy Rate</span>
+                                    <span><span class="metric-icon" aria-hidden="true">?</span>Inaccuracy Rate</span>
                                     <span id="metricInaccuracyRate">0%</span>
                                 </div>
                             </div>
@@ -321,11 +369,11 @@
                                     </div>
                                 </div>
                                 <div class="chart-legend">
-                                    <div class="legend-item"><span class="legend-color best"></span>Best/Excellent: <span id="legendBestVal">0</span></div>
-                                    <div class="legend-item"><span class="legend-color good"></span>Good: <span id="legendGoodVal">0</span></div>
-                                    <div class="legend-item"><span class="legend-color inaccuracy"></span>Inaccuracies: <span id="legendInaccuracyVal">0</span></div>
-                                    <div class="legend-item"><span class="legend-color mistake"></span>Mistakes: <span id="legendMistakeVal">0</span></div>
-                                    <div class="legend-item"><span class="legend-color blunder"></span>Blunders: <span id="legendBlunderVal">0</span></div>
+                                    <div class="legend-item"><span class="legend-left"><span class="legend-color best"></span>Best/Excellent</span><span id="legendBestVal">0</span></div>
+                                    <div class="legend-item"><span class="legend-left"><span class="legend-color good"></span>Good</span><span id="legendGoodVal">0</span></div>
+                                    <div class="legend-item"><span class="legend-left"><span class="legend-color inaccuracy"></span>Inaccuracies</span><span id="legendInaccuracyVal">0</span></div>
+                                    <div class="legend-item"><span class="legend-left"><span class="legend-color mistake"></span>Mistakes</span><span id="legendMistakeVal">0</span></div>
+                                    <div class="legend-item"><span class="legend-left"><span class="legend-color blunder"></span>Blunders</span><span id="legendBlunderVal">0</span></div>
                                 </div>
                             </div>
                         </div>
@@ -335,7 +383,7 @@
                     <div class="dashboard-grid col-3">
                         
                         <!-- Phase Performance Panel -->
-                        <div class="training-panel glass-panel">
+                        <div class="training-panel glass-panel phase-panel">
                             <div class="panel-header">
                                 <h3>Phase Performance</h3>
                             </div>
@@ -371,7 +419,7 @@
                         </div>
 
                         <!-- Color Split Performance Panel -->
-                        <div class="training-panel glass-panel">
+                        <div class="training-panel glass-panel color-panel">
                             <div class="panel-header">
                                 <h3>Color Performance</h3>
                             </div>
@@ -396,16 +444,18 @@
                         </div>
 
                         <!-- Weaknesses summary / recommendations panel -->
-                        <div class="training-panel glass-panel">
+                        <div class="training-panel glass-panel coach-card">
                             <div class="panel-header">
-                                <h3>Coach Recommendations</h3>
+                                <h3><span class="coach-title-icon" aria-hidden="true">☼</span>Coach Recommendations</h3>
                             </div>
                             <div class="recommendations-box">
                                 <p class="rec-summary-text" id="coachRecommendationsSummary">Analyze your games to discover weaknesses and get tailored puzzle themes.</p>
-                                <button id="btnPracticeRecommendations" class="primary-btn full-width-btn" style="display: none; margin-top: 15px;">Practice Recommended Puzzles</button>
+                                <button id="btnPracticeRecommendations" class="primary-btn full-width-btn" style="display: none; margin-top: 15px;">Practice Recommended Puzzles <span aria-hidden="true">→</span></button>
                             </div>
                         </div>
                     </div>
+
+                    <p class="skill-profile-footnote"><span aria-hidden="true">♢</span>Keep practicing! Consistency is key to improvement.</p>
 
                 </div>
             </div>
@@ -429,85 +479,102 @@
                         </div>
                     </div>
 
-                    <div id="trainingBoardFullscreenTarget" class="training-panel">
-                        <div class="training-section-header">
-                            <h2>Puzzle Trainer Board</h2>
+                    <div id="trainingBoardFullscreenTarget" class="training-panel puzzle-trainer-shell">
+                        <div class="training-section-header puzzle-trainer-header">
+                            <h2><span aria-hidden="true">♟</span> Puzzle Trainer</h2>
+                            <button id="btnFullscreenPuzzleBoard" class="secondary-btn puzzle-fullscreen-btn" aria-pressed="false" title="Toggle fullscreen puzzle board">Fullscreen</button>
                         </div>
-                        <div class="training-board-wrap">
-                            <div id="trainingPuzzleBoard" style="width: 100%; max-width: 420px;"></div>
-                        </div>
-                        <div class="puzzle-gamification-stack">
-                            <div id="puzzleStreakCallout" class="puzzle-streak-callout">Current Streak: 0</div>
-                            <span id="puzzleHp" class="hp-meter" aria-label="HP: 5/5">
-                                <span class="hp-label" aria-hidden="true">HP</span>
-                                <span class="hp-hearts" aria-hidden="true">
-                                    <span class="hp-heart is-filled"></span>
-                                    <span class="hp-heart is-filled"></span>
-                                    <span class="hp-heart is-filled"></span>
-                                    <span class="hp-heart is-filled"></span>
-                                    <span class="hp-heart is-filled"></span>
-                                </span>
-                                <span class="visually-hidden">HP: 5/5</span>
-                            </span>
-                            <div id="puzzleSessionXp" class="puzzle-session-xp">Session XP: 0</div>
-                            <div id="puzzleXp" class="puzzle-xp-meter" title="Session XP: 0">
-                                <div class="progression-viewer level-map-shell">
-                                    <div class="level-map-header">
-                                        <div class="level-badge">1</div>
-                                        <div>
-                                            <span>Tactical Vision</span>
-                                            <strong>Puzzles</strong>
-                                        </div>
-                                        <small>Level 1</small>
+                        <div class="puzzle-trainer-stage">
+                            <section class="board-panel">
+                                <div class="training-board-wrap">
+                                    <div id="trainingPuzzleBoard" style="width: 100%; max-width: 720px;"></div>
+                                </div>
+                                <div class="puzzle-status-strip">
+                                    <span id="puzzleSideToMove">Side to move: -</span>
+                                    <span id="puzzleMoveProgress">Move 0 / 0</span>
+                                    <span id="puzzleAccuracy">Puzzle Accuracy: -</span>
+                                    <span id="puzzleCurrentStreak">Current Streak: 0</span>
+                                    <span id="puzzlesLeftInSet">Puzzles left: 0</span>
+                                </div>
+                                <div id="puzzleFeedback" class="training-feedback">Choose a puzzle to begin.</div>
+                            </section>
+
+                            <aside class="puzzle-right-panel">
+                                <div class="puzzle-top-grid">
+                                    <div class="stats-column">
+                                        <div id="puzzleStreakCallout" class="puzzle-streak-callout">Current Streak: 0</div>
+                                        <span id="puzzleHp" class="hp-meter" aria-label="HP: 5/5">
+                                            <span class="hp-label" aria-hidden="true">HP</span>
+                                            <span class="hp-hearts" aria-hidden="true">
+                                                <span class="hp-heart is-filled"></span>
+                                                <span class="hp-heart is-filled"></span>
+                                                <span class="hp-heart is-filled"></span>
+                                                <span class="hp-heart is-filled"></span>
+                                                <span class="hp-heart is-filled"></span>
+                                            </span>
+                                            <span class="visually-hidden">HP: 5/5</span>
+                                        </span>
+                                        <div id="puzzleSessionXp" class="puzzle-session-xp">Session XP: 0</div>
                                     </div>
-                                    <div class="level-map-coach">
-                                        <div class="coach-avatar" aria-hidden="true"><span class="coach-face">♟</span></div>
-                                        <div class="coach-speech">It's time to get solving!</div>
-                                    </div>
-                                    <div class="level-map-board" aria-label="Puzzle Coach level path">
-                                        <div class="level-map-decoration piece-left" aria-hidden="true">♙</div>
-                                        <div class="level-map-decoration piece-right" aria-hidden="true">♞</div>
-                                        <div class="level-map-decoration grass-one" aria-hidden="true"></div>
-                                        <div class="level-map-decoration grass-two" aria-hidden="true"></div>
-                                        <div class="level-map-path">
-                                            <div class="level-map-node-row slot-0 locked boss"><div class="boss-platform" aria-label="Tactics Goblin Upcoming boss"><span class="boss-crown">♛</span><span class="platform-side"></span></div><div class="level-node-caption boss-caption"><strong>Tactics Goblin</strong><small>Level 3 Boss</small></div></div>
-                                            <div class="level-map-node-row slot-1 unlocked level"><div class="level-platform" aria-label="Level 2 Next"><span class="platform-top">2</span><span class="platform-side"></span></div><div class="level-node-caption"><strong>Level 2</strong><small>Next</small></div></div>
-                                            <div class="level-map-node-row slot-2 current level"><div class="level-platform" aria-label="Level 1 Current"><span class="platform-top">1</span><span class="platform-side"></span></div><div class="level-node-caption"><strong>Level 1</strong><small>Current</small></div></div>
-                                        </div>
-                                    </div>
-                                    <div class="level-map-bottom">
-                                        <div class="level-map-progress">
-                                            <strong>0</strong>
-                                            <div class="level-map-progress-track" aria-label="XP progress 0%"><span style="width: 0%"></span></div>
-                                            <small>0/100 XP to Level 2</small>
-                                        </div>
-                                        <div class="level-map-actions">
-                                            <button type="button" class="level-map-menu-btn" aria-label="Puzzle stats">☰</button>
-                                            <button type="button" class="level-map-solve-btn" data-progression-action="solve">Solve Puzzles</button>
+                                    <div id="puzzleXp" class="puzzle-xp-meter" title="Session XP: 0">
+                                        <div class="progression-viewer level-map-shell three-level-map" aria-label="Puzzle level progression">
+                                            <div class="level-path-row next">
+                                                <div class="level-path-rail" aria-hidden="true"><span class="level-path-icon">🔒</span></div>
+                                                <div class="level-card-content">
+                                                    <div class="level-card-label">NEXT LEVEL</div>
+                                                    <div class="level-card next">
+                                                        <div class="level-number">2</div>
+                                                        <div class="level-copy"><strong>Fork Fundamentals</strong><span>Solve to unlock</span><div class="level-card-meta"><span class="xp-star" aria-hidden="true">✹</span>100 XP</div></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="level-path-row current">
+                                                <div class="level-path-rail" aria-hidden="true"><span class="level-path-icon">♜</span></div>
+                                                <div class="level-card-content">
+                                                    <div class="level-card-label">CURRENT LEVEL</div>
+                                                    <div class="level-card current">
+                                                        <div class="level-number">1</div>
+                                                        <div class="level-copy"><strong>Tactical Vision</strong><span>Find the best move in tactical positions.</span><div class="level-card-progress"><div class="level-card-progress-row"><span class="xp-star" aria-hidden="true">✹</span><strong>0/100 XP</strong></div><div class="level-card-progress-track" aria-label="Current level XP progress 0%"><span style="width: 0%"></span></div></div></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="level-path-row previous">
+                                                <div class="level-path-rail" aria-hidden="true"><span class="level-path-icon">✓</span></div>
+                                                <div class="level-card-content">
+                                                    <div class="level-card-label">PREVIOUS LEVEL</div>
+                                                    <div class="level-card previous">
+                                                        <div class="level-number">1</div>
+                                                        <div class="level-copy"><strong>Tactical Vision</strong><span>Completed tactical training milestone.</span><div class="level-card-meta"><span class="xp-star" aria-hidden="true">✹</span>0 XP</div></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="level-map-footer"><span aria-hidden="true">🏆</span><strong>Keep solving to level up!</strong><small>0 levels completed</small></div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div id="bossBattleStatus" class="boss-battle-status" hidden>
-                                <span id="bossBattleName">Tactics Goblin</span>
-                                <span id="bossBattleHp">Player HP: 3/3</span>
-                                <span id="bossBattleProgress">Boss Progress: 0/5</span>
-                            </div>
-                        </div>
-                        <div class="puzzle-status-strip">
-                            <span id="puzzleSideToMove">Side to move: -</span>
-                            <span id="puzzleMoveProgress">Move 0 / 0</span>
-                            <span id="puzzleAccuracy">Puzzle Accuracy: -</span>
-                            <span id="puzzleCurrentStreak">Current Streak: 0</span>
-                            <span id="puzzlesLeftInSet">Puzzles left: 0</span>
-                        </div>
-                        <div id="puzzleFeedback" class="training-feedback">Choose a puzzle to begin.</div>
-                        <div class="puzzle-trainer-actions">
-                            <button id="btnPrevTrainingPuzzle" class="secondary-btn">Previous Puzzle</button>
-                            <button id="btnPrevPuzzleMove" class="secondary-btn">Previous Move</button>
-                            <button id="btnNextPuzzleMove" class="secondary-btn">Forward</button>
-                            <button id="btnNextTrainingPuzzle" class="secondary-btn">Next Puzzle</button>
-                            <button id="btnFullscreenPuzzleBoard" class="secondary-btn" aria-pressed="false" title="Toggle fullscreen puzzle board">Fullscreen Board</button>
+
+                                <div id="puzzleGoalPanel" class="puzzle-goal-panel">
+                                    <div class="puzzle-goal-icon" aria-hidden="true">◎</div>
+                                    <div>
+                                        <div class="puzzle-goal-header">
+                                            <span class="puzzle-goal-title">Puzzle Goal</span>
+                                        </div>
+                                        <div id="puzzleGoalText" class="puzzle-goal-text">Load a puzzle to see your goal.</div>
+                                        <div id="puzzleGoalThemes" class="puzzle-goal-themes">Themes: Mixed tactics</div>
+                                    </div>
+                                </div>
+                                <div id="bossBattleStatus" class="boss-battle-status" hidden>
+                                    <span id="bossBattleName">Tactics Goblin</span>
+                                    <span id="bossBattleHp">Player HP: 3/3</span>
+                                    <span id="bossBattleProgress">Boss Progress: 0/5</span>
+                                </div>
+                                <div class="puzzle-trainer-actions">
+                                    <button id="btnPrevTrainingPuzzle" class="secondary-btn">Previous Puzzle</button>
+                                    <button id="btnPrevPuzzleMove" class="secondary-btn">Back</button>
+                                    <button id="btnNextPuzzleMove" class="secondary-btn">Forward</button>
+                                    <button id="btnNextTrainingPuzzle" class="secondary-btn">Next Puzzle</button>
+                                </div>
+                            </aside>
                         </div>
                     </div>
                 </section>
@@ -595,45 +662,41 @@
             </header>
 
             <main class="profile-layout">
-                <!-- Left Column: Identity & XP -->
+                <!-- Left Column: Profile Header -->
                 <div class="profile-left-col">
-                    <div class="profile-card glass-panel">
-                        <div class="avatar-container" id="profileAvatarContainer" title="Click to change avatar">
-                            <div class="profile-avatar gradient-gold" id="profileAvatarPiece">♔</div>
-                            <div class="avatar-overlay-hint">Change</div>
-                        </div>
-                        
-                        <div class="profile-user-info">
-                            <div class="username-display-wrapper">
-                                <h2 id="profileDisplayName">Chess Player</h2>
-                                <button id="btnEditUsername" class="icon-btn" title="Edit Username">✏️</button>
+                    <div class="profile-card profile-hero-card glass-panel">
+                        <div class="profile-hero-grid">
+                            <div class="avatar-ring" id="profileAvatarContainer" title="Click to change avatar">
+                                <div class="profile-avatar gradient-gold" id="profileAvatarPiece">♔</div>
+                                <div class="avatar-overlay-hint">Change</div>
                             </div>
-                            <div class="username-edit-wrapper" style="display: none;">
-                                <input type="text" id="inputLocalUsername" maxLength="20" placeholder="Enter username...">
-                                <div class="edit-actions">
-                                    <button id="btnSaveUsername" class="primary-btn">Save</button>
-                                    <button id="btnCancelEditUsername" class="secondary-btn">Cancel</button>
+
+                            <div class="profile-hero-details">
+                                <div class="profile-hero-top">
+                                    <div>
+                                        <h2 id="profileDisplayName">Chess Player</h2>
+                                        <p class="profile-hero-subtitle">Your competitive overview, training progress, and performance summary.</p>
+                                    </div>
+                                    <button id="btnEditUsername" class="icon-btn" title="Edit Username">✏️</button>
                                 </div>
-                            </div>
-                            <div class="chesscom-badge" id="profileChessComBadge">
-                                <span class="chesscom-icon">♟</span>
-                                <span id="profileChessComUsernameText">No Chess.com account connected</span>
+
+                                <div class="profile-badges-row">
+                                    <span class="profile-badge mini">Level <strong id="profileLevelVal">1</strong></span>
+                                    <span class="profile-badge mini">Total XP <strong id="profileTotalXp">0</strong></span>
+                                </div>
+
+                                <div class="chesscom-badge" id="profileChessComBadge">
+                                    <span class="chesscom-icon">♟</span>
+                                    <span id="profileChessComUsernameText">No Chess.com account connected</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="profile-xp-section">
-                            <div class="level-badge-container">
-                                <span class="level-label">Training Level</span>
-                                <span id="profileLevelVal" class="level-value">1</span>
-                            </div>
-                            <div class="xp-progress-container">
-                                <div class="xp-progress-bar-wrap">
-                                    <div id="profileXpBarFill" class="xp-progress-bar-fill" style="width: 0%;"></div>
-                                </div>
-                                <div class="xp-text-row">
-                                    <span id="profileXpText">0 XP</span>
-                                    <span id="profileXpNextLevelText">100 XP to next level</span>
-                                </div>
+                        <div class="username-edit-wrapper" style="display: none;">
+                            <input type="text" id="inputLocalUsername" maxLength="20" placeholder="Enter username...">
+                            <div class="edit-actions">
+                                <button id="btnSaveUsername" class="primary-btn">Save</button>
+                                <button id="btnCancelEditUsername" class="secondary-btn">Cancel</button>
                             </div>
                         </div>
                     </div>
@@ -641,58 +704,104 @@
 
                 <!-- Right Column: Stats & Training Progress -->
                 <div class="profile-right-col">
-                    <!-- Game Stats Section -->
                     <div class="profile-section-title">
                         <h2>Game Statistics</h2>
                     </div>
                     <div class="stats-grid-container">
                         <div class="profile-stat-card">
-                            <div class="stat-card-icon bg-blue">📊</div>
+                            <div class="stat-card-icon bg-blue">🎮</div>
                             <div class="stat-card-details">
-                                <span class="stat-card-label">Total Games</span>
+                                <span class="stat-card-label">Games Played</span>
                                 <span id="profileTotalGames" class="stat-card-value">0</span>
                             </div>
                         </div>
                         <div class="profile-stat-card">
                             <div class="stat-card-icon bg-green">🏆</div>
                             <div class="stat-card-details">
-                                <span class="stat-card-label">Games Won</span>
+                                <span class="stat-card-label">Wins</span>
                                 <span id="profileGamesWon" class="stat-card-value">0</span>
                             </div>
                         </div>
                         <div class="profile-stat-card">
-                            <div class="stat-card-icon bg-red">💥</div>
+                            <div class="stat-card-icon bg-red">⚔️</div>
                             <div class="stat-card-details">
-                                <span class="stat-card-label">Games Lost</span>
+                                <span class="stat-card-label">Losses</span>
                                 <span id="profileGamesLost" class="stat-card-value">0</span>
                             </div>
                         </div>
                         <div class="profile-stat-card">
                             <div class="stat-card-icon bg-yellow">🤝</div>
                             <div class="stat-card-details">
-                                <span class="stat-card-label">Games Drawn</span>
+                                <span class="stat-card-label">Draws</span>
                                 <span id="profileGamesDrawn" class="stat-card-value">0</span>
                             </div>
                         </div>
-                        <div class="profile-stat-card full-width-card">
+                        <div class="profile-stat-card">
                             <div class="stat-card-icon bg-purple">📈</div>
                             <div class="stat-card-details">
                                 <span class="stat-card-label">Win Rate</span>
                                 <span id="profileWinRate" class="stat-card-value">0%</span>
                             </div>
                         </div>
+                        <div class="profile-stat-card">
+                            <div class="stat-card-icon bg-slate">⭐</div>
+                            <div class="stat-card-details">
+                                <span class="stat-card-label">Current Level</span>
+                                <span id="profileLevelStat" class="stat-card-value">1</span>
+                            </div>
+                        </div>
+                        <div class="profile-stat-card full-width-card">
+                            <div class="stat-card-icon bg-cyan">⚡</div>
+                            <div class="stat-card-details">
+                                <span class="stat-card-label">Total XP</span>
+                                <span id="profileTotalXpDisplay" class="stat-card-value">0</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Training Progress Section -->
                     <div class="profile-section-title" style="margin-top: 30px;">
                         <h2>Training Progress</h2>
                     </div>
                     <div class="training-progress-panel glass-panel">
-                        <div class="training-stats-row">
-                            <div class="training-stat-item">
-                                <span class="training-item-label">Puzzles Solved</span>
-                                <span id="profilePuzzlesSolved" class="training-item-value">0</span>
+                        <div class="training-progress-header">
+                            <div>
+                                <h3>Progress Overview</h3>
+                                <p class="training-progress-subtitle">Track XP gain, streaks, and your next milestone.</p>
                             </div>
+                            <span class="progress-pill">On Track</span>
+                        </div>
+
+                        <div class="training-progress-summary-grid">
+                            <div class="training-progress-stat">
+                                <span class="training-progress-label">Current Level</span>
+                                <span id="trainingCurrentLevelVal" class="training-progress-value">1</span>
+                            </div>
+                            <div class="training-progress-stat">
+                                <span class="training-progress-label">XP to next level</span>
+                                <span id="profileXpNextLevelText" class="training-progress-value">100 XP</span>
+                            </div>
+                            <div class="training-progress-stat">
+                                <span class="training-progress-label">Puzzles Solved</span>
+                                <span id="profilePuzzlesSolved" class="training-progress-value">0</span>
+                            </div>
+                            <div class="training-progress-stat">
+                                <span class="training-progress-label">Games Analyzed</span>
+                                <span id="profileGamesAnalyzed" class="training-progress-value">0</span>
+                            </div>
+                            <div class="training-progress-stat">
+                                <span class="training-progress-label">Estimated Rating</span>
+                                <span id="profileEstimatedRating" class="training-progress-value">Not estimated</span>
+                            </div>
+                        </div>
+
+                        <div class="xp-progress-bar-wrap progress-large">
+                            <div id="profileXpBarFill" class="xp-progress-bar-fill" style="width: 0%;"></div>
+                        </div>
+                        <div class="xp-progress-footnote">
+                            <span id="profileXpText">0 XP</span>
+                        </div>
+
+                        <div class="training-detail-grid">
                             <div class="training-stat-item">
                                 <span class="training-item-label">Current Streak</span>
                                 <span id="profileCurrentStreakVal" class="training-item-value">0</span>
@@ -702,8 +811,9 @@
                                 <span id="profileBestStreak" class="training-item-value">0</span>
                             </div>
                         </div>
+
                         <div class="activity-timeline-section">
-                            <h3>Training Activity</h3>
+                            <h3>Recent Activity</h3>
                             <div id="profileRecentActivity" class="timeline-container">
                                 <div class="timeline-empty-state">No training activity yet. Play in Training Coach to start earning XP!</div>
                             </div>
@@ -764,8 +874,8 @@
                 </select>
             </div>
             <div class="form-group">
-                <label for="psEloSlider" id="psEloLabel">Computer Strength: 1200 Elo — Medium</label>
-                <input type="range" id="psEloSlider" min="100" max="2500" step="50" value="1200" class="elo-slider">
+                <label for="psEloSlider" id="psEloLabel">Computer Strength: 800 Elo — Beginner (active)</label>
+                <input type="range" id="psEloSlider" min="100" max="2500" step="50" value="800" class="elo-slider">
                 <div class="disclaimer-text">The lower the Elo, the easier the opponent. Difficulty labels are estimates and may not exactly match real player strength.</div>
             </div>
             <div class="modal-actions">
@@ -819,13 +929,13 @@
     <!-- chess.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <!-- Custom JS -->
-    <script src="../engineAdapter.js?v=route-20260606"></script>
-    <script src="../compressionService.js?v=route-20260606"></script>
-    <script src="../playComputer.js?v=route-20260606"></script>
-    <script src="../app.js?v=route-20260606"></script>
-    <script src="../training/skillAnalysisEngine.js?v=route-20260606"></script>
-    <script src="../training/skillProfileBuilder.js?v=route-20260606"></script>
-    <script src="../training/trainingCoachUI.js?v=route-20260606"></script>
+    <script src="engineAdapter.js?v=route-20260606"></script>
+    <script src="compressionService.js?v=route-20260606"></script>
+    <script src="playComputer.js?v=route-20260606"></script>
+    <script src="app.js?v=dashboard-home-20260616"></script>
+    <script src="training/skillAnalysisEngine.js?v=route-20260606"></script>
+    <script src="training/skillProfileBuilder.js?v=route-20260606"></script>
+    <script src="training/trainingCoachUI.js?v=puzzle-goal-solver-side"></script>
 </body>
 
 </html>

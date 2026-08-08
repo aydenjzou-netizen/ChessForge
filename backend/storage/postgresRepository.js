@@ -1,4 +1,4 @@
-const { Pool } = require('pg');
+const { createPool } = require('../config/database');
 const { canonicalGame, apiGame } = require('./gameModel');
 const { LIBRARY_LIMIT } = require('./localRepository');
 
@@ -21,19 +21,14 @@ const COLUMNS = `id, title, source, external_game_id, external_url, event_name, 
 
 class PostgresRepository {
     constructor(options = {}) {
-        this.pool = options.pool || new Pool({
-            connectionString: options.connectionString || process.env.DATABASE_URL,
-            max: Number(process.env.DB_POOL_SIZE || 10),
-            connectionTimeoutMillis: 5000,
-            idleTimeoutMillis: 30000
-        });
+        this.pool = options.pool || createPool({ connectionString: options.connectionString });
     }
 
     async initialize() { await this.healthCheck(); }
 
     async ensureUser(client, userId) {
         await client.query(`INSERT INTO users (id, auth_subject, email, display_name)
-            VALUES ($1, $1, $1 || '@local.invalid', 'Local ChessForge User')
+            VALUES ($1::uuid, $1::text, $1::text || '@local.invalid', 'Local ChessForge User')
             ON CONFLICT (id) DO NOTHING`, [userId]);
     }
 

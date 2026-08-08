@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: chessforge
+      POSTGRES_USER: chessforge
+      POSTGRES_PASSWORD: local-development-only
+    ports:
+      - "5432:5432"
+    volumes:
+      - chessforge-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chessforge -d chessforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  chessforge-postgres:

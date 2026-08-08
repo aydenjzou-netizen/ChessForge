@@ -1,28 +1,180 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const { validate: isUuid } = require('uuid');
 const { createRepository } = require('./storage');
 const { convertPgnToAiTextFormat, upgradeAiTextFormatWithFens, aiTextNeedsFenUpgrade } = require('./chessTextFormat');
 const { analyzeTrainingProfile, getTrainingPuzzles, createEmptyProfile } = require('../server/training/trainingCoach');
 const { logger, requestContext } = require('./observability/logger');
 const { resolveStorageMode } = require('./config/storageMode');
+const { OAuth2Client } = require('google-auth-library');
+const { authConfig } = require('./config/auth');
+const { AuthService, sha256 } = require('./auth/service');
+const { PrivacyService } = require('./privacy/service');
+const { PrivacyNotifier } = require('./privacy/notifier');
+const { privacyConfig } = require('./privacy/config');
 
 const app = express();
 const repository = createRepository();
 const PORT = Number(process.env.PORT || 3001);
-const DEFAULT_LOCAL_USER_ID = process.env.LOCAL_USER_ID || '00000000-0000-4000-8000-000000000001';
+const authentication = authConfig();
+const privacyConfiguration = privacyConfig();
+const privacyNotifier = new PrivacyNotifier({ config: privacyConfiguration, logger });
+const privacyService = new PrivacyService({ pool: repository.pool, config: privacyConfiguration, notifier: privacyNotifier, logger });
+const authService = new AuthService({ pool: repository.pool, googleVerifier: new OAuth2Client(authentication.googleClientId), config: authentication, logger, privacyService });
 
-app.use(cors());
+app.use(cors({ origin: authentication.frontendOrigin, credentials: true, methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'X-CSRF-Token', 'X-Request-ID'] }));
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(requestContext);
-app.use((req, res, next) => {
-    // Temporary bridge: replace x-user-id with a verified auth token before public launch.
-    const userId = req.get('x-user-id') || (process.env.NODE_ENV === 'production' ? null : DEFAULT_LOCAL_USER_ID);
-    if (!userId || !isUuid(userId)) return res.status(401).json({ error: 'Authenticated user is required' });
-    req.user = { id: userId };
+app.use((req,res,next)=>{
+    res.setHeader('x-content-type-options','nosniff');
+    res.setHeader('x-frame-options','DENY');
+    res.setHeader('referrer-policy','strict-origin-when-cross-origin');
+    res.setHeader('permissions-policy','camera=(), microphone=(), geolocation=()');
+    if (authentication.nodeEnv === 'production') res.setHeader('strict-transport-security','max-age=31536000; includeSubDomains');
+    if (req.path.startsWith('/privacy/') || req.path.startsWith('/auth/')) res.setHeader('cache-control','no-store');
     next();
 });
+
+function cookies(req) {
+    return Object.fromEntries(String(req.headers.cookie || '').split(';').map(value => value.trim()).filter(Boolean).map(value => {
+        const index = value.indexOf('=');
+        return [decodeURIComponent(value.slice(0, index)), decodeURIComponent(value.slice(index + 1))];
+    }));
+}
+function cookie(name, value, { httpOnly = false, maxAge } = {}) {
+    return `${name}=${encodeURIComponent(value)}; Path=/; SameSite=Lax${httpOnly ? '; HttpOnly' : ''}${authentication.cookieSecure ? '; Secure' : ''}${maxAge !== undefined ? `; Max-Age=${maxAge}` : ''}`;
+}
+function context(req) { return { requestId: req.requestId, ip: req.ip }; }
+
+app.post('/auth/google', async (req, res) => {
+    try {
+        await privacyService.rateLimit('google_sign_in', req.ip || req.requestId, 20, 60);
+        if (typeof req.body?.credential !== 'string' || req.body.credential.length > 10000) return res.status(400).json({ error: 'Google credential is required' });
+        // Reject missing/invalid consent before verifying or processing any Google profile claims.
+        await privacyService.assessment(req.body.assessmentToken, { requireApproved: true });
+        const result = await authService.signIn(req.body.credential, req.body.assessmentToken, context(req));
+        res.setHeader('Set-Cookie', [
+            cookie(authentication.cookieName, result.sessionToken, { httpOnly: true, maxAge: authentication.sessionTtlSeconds }),
+            cookie(authentication.csrfCookieName, result.csrfToken, { maxAge: authentication.sessionTtlSeconds })
+        ]);
+        res.json({ user: result.user });
+    } catch (error) {
+        logger.warn('auth.google.failed', { requestId: req.requestId, error });
+        res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Sign-in failed', code: error.code });
+    }
+});
+
+app.post('/privacy/age-assessments', async (req, res) => {
+    try { res.status(201).json(await privacyService.createAssessment(req.body || {}, context(req))); }
+    catch (error) { res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Age assessment failed', code: error.code }); }
+});
+
+app.post('/privacy/guardian/requests', async (req, res) => {
+    try { res.status(201).json(await privacyService.requestGuardianConsent(req.body || {}, context(req))); }
+    catch (error) { logger.warn('privacy.guardian.request.failed', { requestId: req.requestId, error }); res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Consent request failed', code: error.code }); }
+});
+
+app.get('/privacy/guardian/requests/:token', async (req, res) => {
+    try { res.json(await privacyService.consentRequest(req.params.token)); }
+    catch (error) { res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Consent request failed', code: error.code }); }
+});
+
+app.post('/privacy/guardian/decisions', async (req, res) => {
+    try { res.json(await privacyService.decideGuardianConsent(req.body || {}, context(req))); }
+    catch (error) { logger.warn('privacy.guardian.decision.failed', { requestId: req.requestId, error }); res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Consent decision failed', code: error.code }); }
+});
+
+app.post('/privacy/vpc/webhook', async (req, res) => {
+    try { res.json(await privacyService.recordVPCVerification(req.body || {}, req.get('x-vpc-webhook-secret'), context(req))); }
+    catch (error) { logger.warn('privacy.vpc.webhook.failed', { requestId: req.requestId, error }); res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Verification callback failed', code: error.code }); }
+});
+
+app.get('/privacy/guardian/manage/:token', async (req,res)=>{
+    try{res.setHeader('cache-control','no-store');res.json(await privacyService.guardianProfile(req.params.token));}
+    catch(error){res.status(error.statusCode||500).json({error:error.statusCode?error.message:'Guardian management failed',code:error.code});}
+});
+
+app.delete('/privacy/guardian/manage/:token', async (req,res)=>{
+    try{await privacyService.rateLimit('guardian_revoke',req.ip||req.requestId,10,60);res.json(await privacyService.revokeGuardian(req.params.token,context(req)));}
+    catch(error){res.status(error.statusCode||500).json({error:error.statusCode?error.message:'Guardian revocation failed',code:error.code});}
+});
+
+app.post('/privacy/guardian/manage/:token/export', async(req,res)=>{
+    try{await privacyService.rateLimit('guardian_export',req.ip||req.requestId,5,60);const guardian=await privacyService.guardianProfile(req.params.token);if(!guardian.child_user_id)return res.status(409).json({error:'The child account has not been created'});res.setHeader('content-disposition',`attachment; filename="chessforge-child-export-${new Date().toISOString().slice(0,10)}.json"`);res.json(await privacyService.exportUser(guardian.child_user_id));}
+    catch(error){res.status(error.statusCode||500).json({error:error.statusCode?error.message:'Guardian export failed',code:error.code});}
+});
+
+app.delete('/privacy/guardian/manage/:token/child', async(req,res)=>{
+    try{await privacyService.rateLimit('guardian_delete',req.ip||req.requestId,5,60);const guardian=await privacyService.guardianProfile(req.params.token);if(!guardian.child_user_id)return res.status(409).json({error:'The child account has not been created'});res.json(await privacyService.deleteUser(guardian.child_user_id,{...context(req),actorType:'guardian'}));}
+    catch(error){res.status(error.statusCode||500).json({error:error.statusCode?error.message:'Guardian deletion failed',code:error.code});}
+});
+
+app.use(async (req, res, next) => {
+    try {
+        req.auth = await authService.getSession(cookies(req)[authentication.cookieName]);
+        if (req.auth) req.user = req.auth.user;
+        next();
+    } catch (error) { next(error); }
+});
+
+app.get('/auth/me', (req, res) => req.user ? res.json({ user: req.user }) : res.status(401).json({ error: 'Not authenticated' }));
+
+function requireCsrf(req, res, next) {
+    const supplied = req.get('x-csrf-token') || '';
+    if (!req.auth || !supplied || sha256(supplied) !== req.auth.csrfHash) return res.status(403).json({ error: 'Invalid CSRF token' });
+    next();
+}
+app.post('/auth/logout', requireCsrf, async (req, res) => {
+    await authService.logout(cookies(req)[authentication.cookieName], context(req));
+    res.setHeader('Set-Cookie', [cookie(authentication.cookieName, '', { httpOnly: true, maxAge: 0 }), cookie(authentication.csrfCookieName, '', { maxAge: 0 })]);
+    res.json({ ok: true });
+});
+
+app.use((req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'Authenticated user is required' });
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return requireCsrf(req, res, next);
+    next();
+});
+
+app.get('/privacy/me', async (req, res) => {
+    try { res.json(await privacyService.privacyProfile(req.user.id)); }
+    catch (error) { res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Privacy profile failed', code: error.code }); }
+});
+
+app.put('/privacy/me/preferences', async (req, res) => {
+    try { res.json(await privacyService.setPreferences(req.user.id, req.body || {}, context(req))); }
+    catch (error) { res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Privacy preferences failed', code: error.code }); }
+});
+
+app.post('/privacy/me/export', async (req, res) => {
+    try {
+        const data = await privacyService.exportUser(req.user.id);
+        res.setHeader('content-disposition', `attachment; filename="chessforge-export-${new Date().toISOString().slice(0,10)}.json"`);
+        res.setHeader('cache-control', 'no-store'); res.json(data);
+    } catch (error) { res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Export failed', code: error.code }); }
+});
+
+app.post('/privacy/me/requests', async (req,res)=>{
+    try{res.status(201).json(await privacyService.createRightsRequest(req.user.id,req.body?.requestType,context(req)));}
+    catch(error){res.status(error.statusCode||500).json({error:error.statusCode?error.message:'Privacy request failed',code:error.code});}
+});
+
+app.delete('/privacy/me', async (req, res) => {
+    try {
+        const result = await privacyService.deleteUser(req.user.id, context(req));
+        res.setHeader('Set-Cookie', [cookie(authentication.cookieName, '', { httpOnly: true, maxAge: 0 }), cookie(authentication.csrfCookieName, '', { maxAge: 0 })]);
+        res.json(result);
+    } catch (error) { res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Deletion failed', code: error.code }); }
+});
+
+function requireFeature(feature) {
+    return async (req, res, next) => {
+        try { await privacyService.requireEntitlement(req.user.id, feature); next(); }
+        catch (error) { res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Feature authorization failed', code: error.code }); }
+    };
+}
+
+app.use('/api', requireFeature('core_account'));
 
 function extractMetadata(pgn) {
     const metadata = {};
@@ -35,6 +187,7 @@ function extractMetadata(pgn) {
 app.post('/api/games', async (req, res) => {
     try {
         if (!req.body.pgn) return res.status(400).json({ error: 'PGN is required' });
+        if (req.body.source === 'chess.com' || req.body.chessCom) await privacyService.requireEntitlement(req.user.id, 'chesscom_link');
         const headers = { ...extractMetadata(req.body.pgn), ...(req.body.headers || {}) };
         const game = await repository.saveGame(req.user.id, {
             ...req.body,
@@ -46,7 +199,7 @@ app.post('/api/games', async (req, res) => {
         res.status(201).json(game);
     } catch (error) {
         logger.error('game.save.failed', { requestId: req.requestId, userId: req.user.id, error });
-        res.status(500).json({ error: 'Failed to save game' });
+        res.status(error.statusCode||500).json({ error: error.statusCode?error.message:'Failed to save game', code:error.code });
     }
 });
 
@@ -57,9 +210,10 @@ app.get('/api/games', async (req, res) => {
 
 app.put('/api/games/library', async (req, res) => {
     try {
+        if (Array.isArray(req.body.games) && req.body.games.some(game => game?.source === 'chess.com' || game?.chessCom)) await privacyService.requireEntitlement(req.user.id, 'chesscom_link');
         const games = await repository.replaceLibrary(req.user.id, Array.isArray(req.body.games) ? req.body.games : []);
         res.json({ games, count: games.length });
-    } catch (error) { logger.error('game.library.replace.failed', { requestId: req.requestId, userId: req.user.id, error }); res.status(500).json({ error: 'Failed to replace game library' }); }
+    } catch (error) { logger.error('game.library.replace.failed', { requestId: req.requestId, userId: req.user.id, error }); res.status(error.statusCode||500).json({ error: error.statusCode?error.message:'Failed to replace game library', code:error.code }); }
 });
 
 app.get('/api/games/:id', async (req, res) => {
@@ -138,13 +292,18 @@ app.get('/api/training/puzzles', async (req, res) => {
 
 app.get('/api/health', async (req, res) => res.json(await repository.healthCheck()));
 
-repository.initialize().then(() => {
-    app.listen(PORT, () => logger.info('service.started', {
+async function start() {
+    await repository.initialize();
+    return app.listen(PORT, () => logger.info('service.started', {
         port: PORT,
         storageMode: resolveStorageMode(),
         environment: process.env.NODE_ENV || 'development'
     }));
-}).catch(error => {
+}
+
+if (require.main === module) start().catch(error => {
     logger.error('storage.initialization.failed', { storageMode: process.env.STORAGE_MODE, error });
     process.exitCode = 1;
 });
+
+module.exports = { app, start };
